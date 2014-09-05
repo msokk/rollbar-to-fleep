@@ -1,0 +1,20 @@
+{
+  "name": "rollbar-to-fleep",
+  "version": "0.1.0",
+  "description": "Rollbar to Fleep webhook proxy",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js"
+  },
+  "dependencies": {
+    "express": "~3.4.x"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/msokk/rollbar-to-fleep"
+  },
+  "devDependencies": {
+    "body-parser": "^1.7.0",
+    "superagent": "^0.18.2"
+  }
+}
