@@ -37,7 +37,7 @@ app.post('/' + process.env.HOOK_ID, function(req, res) {
     .post('https://fleep.io/hook/' + process.env.FLEEP_HOOK_ID)
     .send({ message: msg })
     .end(function(error, response) {
-      res.end();
+      res.status(200).end();
       if(error === null) return console.log('OK!');
       console.log(response);
     });
