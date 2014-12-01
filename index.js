@@ -19,6 +19,7 @@ app.post('/:secret/:hook_id', function(req, res) {
   var msg = '',
       data = req.body.data;
 
+  // New deploy
   if(req.body.event_name === 'deploy') {
     data = data.deploy;
 
@@ -27,6 +28,7 @@ app.post('/:secret/:hook_id', function(req, res) {
       data.revision.substring(0, 9));
   }
 
+  // New error
   if(req.body.event_name === 'new_item') {
     data = data.item;
     var last_err = data.last_occurrence,
@@ -35,6 +37,9 @@ app.post('/:secret/:hook_id', function(req, res) {
     msg = util.format(error_template, level, data.environment, data.title,
       'https://rollbar.com/item/uuid?uuid=' + last_err.uuid);
   }
+
+  // Test notification
+  if(req.body.event_name === 'test') msg = data.message;
 
   request
     .post('https://fleep.io/hook/' + req.param('hook_id'))
