@@ -10,7 +10,7 @@ app.set('port', (process.env.PORT || 5000));
 // Secret not set - exit
 if(!process.env.SECRET) return;
 
-var deploy_template = '*%s* deployed to *%s* revision %s<<_%s_>>',
+var deploy_template = '*%s* deployed to *%s* revision %s<<%s>>',
     error_template = '*%s on %s*: %s. %s<<See more...>>';
 
 
