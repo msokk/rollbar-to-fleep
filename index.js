@@ -41,6 +41,9 @@ app.post('/:secret/:hook_id', function(req, res) {
   // Test notification
   if(req.body.event_name === 'test') msg = data.message;
 
+  // Unhandled event - drop it
+  if(msg === '') return res.status(200).end();
+
   request
     .post('https://fleep.io/hook/' + req.param('hook_id'))
     .send({ message: msg })
