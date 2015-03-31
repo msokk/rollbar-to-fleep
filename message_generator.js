@@ -1,5 +1,8 @@
 let request = require('co-request');
 
+const DUMMY_PROJECT = { name: 'A project' };
+
+
 /**
  * Get proper emoji for error level
  */
@@ -17,8 +20,6 @@ let getEmoji = function(level) {
 };
 
 
-const DUMMY_PROJECT = { name: 'A project' };
-
 /**
  * Fetch Rollbar project data
  */
@@ -31,24 +32,14 @@ let fetchProject = function* (id) {
     json: true
   });
 
-  if(!result.body.result) return DUMMY_PROJECT;
-  return result.body.result;
+  return result.body.result || DUMMY_PROJECT;
 };
 
 
 /**
  * Generate suitable message for Fleep
  */
-module.exports = function* (payload) {
-  let data = payload.data,
-      event = payload.event_name;
-
-  if(event.endsWith('_item')) data = data.item;
-  if(event.endsWith('deploy')) data = data.deploy;
-
-  // Populate project data
-  if(data.project_id) data.project = yield fetchProject(data.project_id);
-
+let makeMessage = function(event, data) {
   switch(event) {
     case 'exp_repeat_item':
     case 'new_item':
@@ -65,7 +56,7 @@ module.exports = function* (payload) {
       if(event === 'exp_repeat_item')
         msg += ' happened for the ${n}th time'.template({ n: data.total_occurrences });
 
-      return msg + ':\n\t${url}<<#${count}>> ${title}'.template({
+      return msg + ':\n${url}<<#${count}>> ${title}'.template({
         url: 'https://rollbar.com/item/uuid?uuid=' + last_err.uuid,
         count: data.counter,
         title: data.title
@@ -77,7 +68,7 @@ module.exports = function* (payload) {
       return 'TODO: ' + event;
 
     case 'deploy':
-      return '🕓 *${name}* was deployed to *${env}*\n\trevision ${url}<<${rev}>> by _${user}_'.template({
+      return '🕓 *${name}* was deployed to *${env}*\nrevision ${url}<<${rev}>> by _${user}_'.template({
         name: data.project.name,
         env: data.environment,
         url: 'https://rollbar.com/deploy/' + data.id,
@@ -85,10 +76,26 @@ module.exports = function* (payload) {
         user: data.local_username
       });
 
-    case 'test':
-      return '*Rollbar test*: ' + data.message;
+    case 'test': return '*Rollbar test*: ' + data.message;
 
     default:
-      return 'Unknown message: ' + JSON.stringify(payload);
+      return 'Unknown event *${event}*: ${data}'.template({
+        event: event,
+        data: JSON.stringify(data, null, 2)
+      });
   }
+};
+
+
+module.exports = function* (payload) {
+  let data = payload.data,
+      event = payload.event_name;
+
+  if(event.endsWith('_item')) data = data.item;
+  if(event.endsWith('deploy')) data = data.deploy;
+
+  // Populate project data
+  if(data.project_id) data.project = yield fetchProject(data.project_id);
+
+  return makeMessage(event, data);
 };
