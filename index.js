@@ -1,59 +1,34 @@
-var express = require('express'),
-    util = require('util'),
-    bodyParser = require('body-parser'),
-    app = express(),
-    request = require('superagent');
+let koa = require('koa');
+let logger = require('koa-logger');
+let bodyParser = require('koa-bodyparser');
+let request = require('co-request');
+let route = require('koa-route');
 
-app.use(bodyParser.json());
-app.set('port', (process.env.PORT || 5000));
+let generateMessage = require('./message_generator');
+require('./es6-template');
 
-// Secret not set - exit
-if(!process.env.SECRET) return;
-
-var deploy_template = '*%s* deployed to *%s* revision %s<<%s>>',
-    error_template = '%s on *%s* reported to %s<<Rollbar>>:\n%s';
+let app = koa();
+app.use(logger());
+app.use(bodyParser());
 
 
-app.post('/:secret/:hook_id', function(req, res) {
-  console.log(req.body);
-  var msg = '',
-      data = req.body.data;
+app.use(route.post('/hook/:id', function *(hook_id) {
+  let payload = this.request.body;
 
-  // New deploy
-  if(req.body.event_name === 'deploy') {
-    data = data.deploy;
+  // Is not a Rollbar event
+  if(!payload || !payload.event_name) return this.status = 400;
 
-    msg = util.format(deploy_template, data.local_username, data.environment,
-      'https://github.com/' + req.param('github') + '/commit/' + data.revision,
-      data.revision.substring(0, 9));
-  }
+  let msg = yield generateMessage(payload);
 
-  // New error
-  if(req.body.event_name === 'new_item') {
-    data = data.item;
-    var last_err = data.last_occurrence,
-        level = last_err.level[0].toUpperCase() + last_err.level.slice(1);
+  let result = yield request({
+    uri: 'https://fleep.io/hook/' + hook_id,
+    method: 'POST',
+    form: { message: msg }
+  });
 
-    msg = util.format(error_template, level, data.environment,
-      'https://rollbar.com/item/uuid?uuid=' + last_err.uuid, data.title);
-  }
+  this.status = 200;
+  console.log('Sent to fleep:\n%s\nGot: %s\n\n', msg, result.statusCode);
+}));
 
-  // Test notification
-  if(req.body.event_name === 'test') msg = data.message;
 
-  // Unhandled event - drop it
-  if(msg === '') return res.status(200).end();
-
-  request
-    .post('https://fleep.io/hook/' + req.param('hook_id'))
-    .send({ message: msg })
-    .end(function(error, response) {
-      res.status(200).end();
-      if(error === null) return console.log('OK!');
-      console.log(response);
-    });
-});
-
-app.listen(app.get('port'), function() {
-  console.log("Proxy is running at localhost:" + app.get('port'));
-});
+app.listen((process.env.PORT || 5000));

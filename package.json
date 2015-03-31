@@ -1,18 +1,23 @@
 {
   "name": "rollbar-to-fleep",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Rollbar to Fleep webhook proxy",
   "main": "index.js",
   "scripts": {
-    "start": "node index.js"
+    "start": "node --harmony --use_strict --harmony_generators index.js"
   },
   "dependencies": {
-    "express": "~3.4.x",
-    "body-parser": "^1.7.0",
-    "superagent": "^0.18.2"
+    "co-request": "^0.2.0",
+    "koa": "^0.18.1",
+    "koa-bodyparser": "^1.4.1",
+    "koa-logger": "^1.2.2",
+    "koa-route": "^2.4.0"
   },
   "repository": {
     "type": "git",
     "url": "https://github.com/msokk/rollbar-to-fleep"
+  },
+  "engines": {
+    "node": "0.12.x"
   }
 }
