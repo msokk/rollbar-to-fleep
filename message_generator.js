@@ -86,7 +86,7 @@ module.exports = function* (payload) {
       });
 
     case 'test':
-      return JSON.stringify(payload);
+      return '*Rollbar test*: ' + data.message;
 
     default:
       return 'Unknown message: ' + JSON.stringify(payload);
