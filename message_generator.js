@@ -43,6 +43,9 @@ let makeMessage = function(event, data) {
   switch(event) {
     case 'exp_repeat_item':
     case 'new_item':
+    case 'resolved_item':
+    case 'reopened_item':
+    case 'reactivated_item':
       var last_err = data.last_occurrence;
 
       var msg = '${emoji} *${name}* ${level} on *${env}*'.template({
@@ -56,16 +59,23 @@ let makeMessage = function(event, data) {
       if(event === 'exp_repeat_item')
         msg += ' happened for the ${n}th time'.template({ n: data.total_occurrences });
 
+      // Resolved
+      if(event === 'resolved_item')
+        msg += ' was *resolved* ✅';
+
+      // Reopened
+      if(event === 'reopened_item')
+        msg += ' was *reopened*';
+
+      // Reactivated
+      if(event === 'reactivated_item')
+        msg += ' was *reactivated* 💩';
+
       return msg + ':\n${url}<<#${count}>> ${title}'.template({
         url: 'https://rollbar.com/item/uuid?uuid=' + last_err.uuid,
         count: data.counter,
         title: data.title
       });
-
-    case 'resolved_item':
-    case 'reopened_item':
-    case 'reactivated_item':
-      return 'TODO: ' + event;
 
     case 'deploy':
       return '🕓 *${name}* was deployed to *${env}*\nrevision ${url}<<${rev}>> by _${user}_'.template({
