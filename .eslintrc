@@ -1,13 +1,3 @@
 {
-  "env": {
-    "node": true,
-    "es6": true
-  },
-  "rules": {
-    "curly": 0,
-    "quotes": [2, "single"],
-    "camelcase": 0,
-    "strict": 0,
-    "no-underscore-dangle": 0
-  }
+  "extends": "airbnb/base"
 }

@@ -1,111 +1,90 @@
-let request = require('co-request');
+'use strict';
 
+const request = require('co-request');
 const DUMMY_PROJECT = { name: 'A project' };
-
 
 /**
  * Get proper emoji for error level
  */
-let getEmoji = function(level) {
-  switch(level) {
+function getEmoji(level) {
+  switch (level) {
     case 'debug':
     case 'info':
       return 'ℹ️';
-    case 'warning':
-      return '⚠️';
+    case 'warning': return '⚠️';
     case 'critical':
     case 'error':
       return '⛔️';
+    default: return '❔';
   }
-};
-
+}
 
 /**
  * Fetch Rollbar project data
  */
-let fetchProject = function* (id) {
-  if(!process.env.ROLLBAR_TOKEN) return DUMMY_PROJECT;
+function* fetchProject(id) {
+  if (!process.env.ROLLBAR_TOKEN) return DUMMY_PROJECT;
 
-  let result = yield request({
-    uri: 'https://api.rollbar.com/api/1/project/' + id,
+  const result = yield request({
+    uri: `https://api.rollbar.com/api/1/project/${id}`,
     qs: { access_token: process.env.ROLLBAR_TOKEN },
-    json: true
+    json: true,
   });
 
   return result.body.result || DUMMY_PROJECT;
-};
+}
 
+/**
+ * Format item message
+ */
+function formatItemMsg(event, data) {
+  const lastErr = data.last_occurrence;
+
+  let msg = `${getEmoji(lastErr.level)} *${data.project.name}* ` +
+            `${lastErr.level} on *${data.environment}*`;
+
+  switch (event) {
+    case 'exp_repeat_item': // Repeating
+      msg += ` happened for the ${data.total_occurrences}th time`;
+      break;
+    case 'resolved_item': // Resolved
+      msg += ' was *resolved* ✅';
+      break;
+    case 'reopened_item': // Reopened
+      msg += ' was *reopened*';
+      break;
+    case 'reactivated_item': // Reactivated
+      msg += ' was *reactivated* 💩';
+      break;
+    default: break;
+  }
+
+  return `${msg}:\nhttps://rollbar.com/item/uuid?uuid=${lastErr.uuid}<<#${data.counter}>> ${data.title}`;
+}
 
 /**
  * Generate suitable message for Fleep
  */
-let makeMessage = function(event, data) {
-  switch(event) {
+module.exports = function* messageGenerator(payload) {
+  let data = payload.data;
+  const event = payload.event_name;
+
+  if (event.endsWith('_item')) data = data.item;
+  if (event.endsWith('deploy')) data = data.deploy;
+
+  // Populate project data
+  if (data.project_id) data.project = yield fetchProject(data.project_id);
+
+  switch (event) {
     case 'exp_repeat_item':
     case 'new_item':
     case 'resolved_item':
     case 'reopened_item':
     case 'reactivated_item':
-      var last_err = data.last_occurrence;
-
-      var msg = '${emoji} *${name}* ${level} on *${env}*'.template({
-        name: data.project.name,
-        level: last_err.level,
-        env: data.environment,
-        emoji: getEmoji(last_err.level)
-      });
-
-      // Repeating
-      if(event === 'exp_repeat_item')
-        msg += ' happened for the ${n}th time'.template({ n: data.total_occurrences });
-
-      // Resolved
-      if(event === 'resolved_item')
-        msg += ' was *resolved* ✅';
-
-      // Reopened
-      if(event === 'reopened_item')
-        msg += ' was *reopened*';
-
-      // Reactivated
-      if(event === 'reactivated_item')
-        msg += ' was *reactivated* 💩';
-
-      return msg + ':\n${url}<<#${count}>> ${title}'.template({
-        url: 'https://rollbar.com/item/uuid?uuid=' + last_err.uuid,
-        count: data.counter,
-        title: data.title
-      });
-
-    case 'deploy':
-      return '🕓 *${name}* was deployed to *${env}*\nrevision ${url}<<${rev}>> by _${user}_'.template({
-        name: data.project.name,
-        env: data.environment,
-        url: 'https://rollbar.com/deploy/' + data.id,
-        rev: data.revision.substring(0, 9),
-        user: data.local_username
-      });
-
-    case 'test': return '*Rollbar test*: ' + data.message;
-
+      return formatItemMsg(event, data);
+    case 'test':
+      return `*Rollbar test*: ${data.message}`;
     default:
-      return 'Unknown event *${event}*: ${data}'.template({
-        event: event,
-        data: JSON.stringify(data, null, 2)
-      });
+      return `Unknown event *${event}*: ${JSON.stringify(data, null, 2)}`;
   }
-};
-
-
-module.exports = function* (payload) {
-  let data = payload.data,
-      event = payload.event_name;
-
-  if(event.endsWith('_item')) data = data.item;
-  if(event.endsWith('deploy')) data = data.deploy;
-
-  // Populate project data
-  if(data.project_id) data.project = yield fetchProject(data.project_id);
-
-  return makeMessage(event, data);
 };

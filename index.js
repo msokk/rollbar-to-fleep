@@ -1,33 +1,35 @@
-let koa = require('koa');
-let logger = require('koa-logger');
-let bodyParser = require('koa-bodyparser');
-let request = require('co-request');
-let route = require('koa-route');
+const koa = require('koa');
+const logger = require('koa-logger');
+const bodyParser = require('koa-bodyparser');
+const request = require('co-request');
+const route = require('koa-route');
 
-let generateMessage = require('./message_generator');
-require('./es6-template');
+const generateMessage = require('./message_generator');
 
-let app = koa();
+const app = koa();
 app.use(logger());
 app.use(bodyParser());
 
 
-app.use(route.post('/hook/:id', function *(hook_id) {
-  let payload = this.request.body;
+app.use(route.post('/hook/:id', function* parseHook(hookId) {
+  const payload = this.request.body;
 
   // Is not a Rollbar event
-  if(!payload || !payload.event_name) return this.status = 400;
+  if (!payload || !payload.event_name || !payload.data) {
+    this.status = 400;
+    return;
+  }
 
-  let msg = yield generateMessage(payload);
+  const msg = yield generateMessage(payload);
 
-  let result = yield request({
-    uri: 'https://fleep.io/hook/' + hook_id,
+  const result = yield request({
+    uri: `https://fleep.io/hook/${hookId}`,
     method: 'POST',
-    form: { message: msg }
+    form: { message: msg },
   });
 
   this.status = 200;
-  console.log('Sent to fleep:\n%s\nGot: %s\n\n', msg, result.statusCode);
+  console.log('Sent to fleep:\n%s\nGot: %s\n\n', msg, result.statusCode); // eslint-disable-line
 }));
 
 

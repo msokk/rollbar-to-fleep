@@ -1,0 +1,8 @@
+runtime: nodejs
+vm: true
+
+skip_files:
+  - ^(.*/)?.*/node_modules/.*$
+
+env_variables:
+  ROLLBAR_TOKEN: <token_for_project_ids>
