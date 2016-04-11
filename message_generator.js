@@ -82,6 +82,10 @@ module.exports = function* messageGenerator(payload) {
     case 'reopened_item':
     case 'reactivated_item':
       return formatItemMsg(event, data);
+    case 'deploy':
+      return `🕓 *${data.project.name}* was deployed to *${data.environment}*\n` +
+        `revision ${`https://rollbar.com/deploy/${data.id}`}<<${data.revision.substring(0, 9)}>> ` +
+        `by _${data.local_username}_`;
     case 'test':
       return `*Rollbar test*: ${data.message}`;
     default:
